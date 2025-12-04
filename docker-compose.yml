@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: practika-app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://postgres:password@db:5432/cms_db
+      METABASE_ENABLED: "true"
+      METABASE_URL: http://metabase:3000
+      METABASE_USERNAME: ameliazr@mail.ru
+      METABASE_PASSWORD: AmeliaCat2007
+      METABASE_DATABASE_ID: 1
+    networks:
+      - cms-network
+    volumes:
+      - ./data:/app/data
+
+  db:
+    image: postgres:15-alpine
+    container_name: practika-db
+    environment:
+      POSTGRES_DB: cms_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - cms-network
+
+networks:
+  cms-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
