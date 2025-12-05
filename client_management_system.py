@@ -19,8 +19,6 @@ import webbrowser
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-# ========== ВСПОМОГАТЕЛЬНЫЕ КЛАССЫ ==========
-
 class MetabaseIntegration:
     """Интеграция с Metabase для автоматической синхронизации данных"""
     
@@ -30,6 +28,36 @@ class MetabaseIntegration:
         self.session_id = None
         self.database_id = config.get('database_id')
         self.logger = logging.getLogger(__name__)
+        
+
+    def open_metabase(self):
+        """Открыть Metabase в браузере"""
+        try:
+            if not self.config.get('enabled', False):
+                self.show_metabase_disabled_message()
+                return False
+            
+            import webbrowser
+            url = self.base_url
+            webbrowser.open(url)
+            self.logger.info(f"Открываю Metabase: {url}")
+            
+            # Показываем подсказку через 2 секунды
+            import threading
+            def show_tips():
+                import time
+                time.sleep(2)
+                self.show_metabase_tips()
+            
+            thread = threading.Thread(target=show_tips, daemon=True)
+            thread.start()
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка открытия Metabase: {e}")
+            messagebox.showerror("Ошибка", f"Не удалось открыть Metabase:\n{str(e)}")
+            return False
         
     def connect(self) -> bool:
         """Подключение к Metabase API"""
@@ -934,150 +962,19 @@ class ExcelDataImporter:
 
 
 class DataVisualization:
-    """Модуль визуализации данных и отчетности"""
+    """Модуль визуализации данных"""
     
     def __init__(self, main_app):
         self.main_app = main_app
         self.logger = logging.getLogger(__name__)
-        self.metabase_config = None
-        self.setup_metabase()
-        
-        # Цветовая схема для графиков
-        self.color_palette = sns.color_palette("husl", 8)
-        plt.style.use('seaborn-v0_8-darkgrid')
+        # Инициализируем атрибуты
+        self.chart_canvas = None
+        self.current_figure = None
+        self.chart_frame = None
+        self.stats_text = None
     
-    def setup_metabase(self):
-        """Настройка подключения к Metabase"""
-        try:
-            # Пытаемся загрузить конфигурацию из файла
-            config_file = "metabase_config.json"
-            if os.path.exists(config_file):
-                with open(config_file, 'r') as f:
-                    self.metabase_config = json.load(f)
-                self.logger.info("Конфигурация Metabase загружена")
-            else:
-                # Создаем шаблон конфигурации
-                self.metabase_config = {
-                    "enabled": False,
-                    "url": "http://localhost:3000",
-                    "username": "admin@example.com",
-                    "password": "password123",
-                    "database_id": 1,
-                    "collection_id": None
-                }
-                self.logger.info("Используется конфигурация Metabase по умолчанию")
-                
-        except Exception as e:
-            self.logger.error(f"Ошибка загрузки конфигурации Metabase: {e}")
-            self.metabase_config = {"enabled": False}
-    
-    def export_to_excel(self):
-        """Экспорт данных визуализации в Excel"""
-        try:
-            # Временно используем экспорт из основного приложения
-            self.main_app.export_orders_to_excel()
-        except Exception as e:
-            self.logger.error(f"Ошибка экспорта в Excel: {e}")
-            messagebox.showerror("Ошибка", f"Не удалось экспортировать данные:\n{str(e)}")
-    
-    def save_visualization(self):
-        """Сохранение графика как изображения"""
-        try:
-            if not hasattr(self, 'current_figure') or self.current_figure is None:
-                messagebox.showwarning("Внимание", "Сначала создайте график")
-                return
-            
-            # Временно сообщаем, что функция в разработке
-            messagebox.showinfo("Сохранение", 
-                "Функция сохранения графиков как изображения будет реализована в следующей версии.")
-                
-        except Exception as e:
-            self.logger.error(f"Ошибка сохранения графика: {e}")
-            messagebox.showerror("Ошибка", f"Не удалось сохранить график:\n{str(e)}")
-
-    def open_metabase(self):
-        """Открыть Metabase в браузере"""
-        try:
-            if self.metabase_config and self.metabase_config.get("enabled"):
-                import webbrowser
-                url = self.metabase_config.get("url", "http://localhost:3000")
-                webbrowser.open(url)
-                self.logger.info(f"Открываю Metabase: {url}")
-            else:
-                messagebox.showwarning("Metabase", 
-                    "Интеграция с Metabase отключена. Настройте в конфигурации.")
-        except Exception as e:
-            self.logger.error(f"Ошибка открытия Metabase: {e}")
-            messagebox.showerror("Ошибка", f"Не удалось открыть Metabase:\n{str(e)}")
-    def generate_visualization(self):
-        """Генерация визуализации"""
-        try:
-            viz_type = self.viz_type.get()
-            period = self.period_var.get()
-            
-            # Создание графика в зависимости от типа
-            if viz_type == "revenue_trend":
-                self.create_revenue_trend_chart()
-            elif viz_type == "genre_distribution":
-                self.create_genre_distribution_chart()
-            elif viz_type == "top_customers":
-                self.create_top_customers_chart()
-            elif viz_type == "order_status":
-                self.create_order_status_chart()
-            elif viz_type == "seasonality":
-                self.create_seasonality_chart()
-            elif viz_type == "discount_analysis":
-                self.create_discount_analysis_chart()
-            else:
-                messagebox.showwarning("Внимание", "Выберите тип графика")
-            
-        except Exception as e:
-            self.logger.error(f"Ошибка генерации визуализации: {e}")
-            messagebox.showerror("Ошибка", f"Не удалось создать график:\n{str(e)}")
-
-    def create_revenue_trend_chart(self):
-        """Создание графика динамики выручки"""
-        try:
-            # Создание простого графика для демонстрации
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.plot([1, 2, 3, 4, 5], [100, 200, 150, 300, 250], marker='o')
-            ax.set_xlabel('Месяцы')
-            ax.set_ylabel('Выручка, руб.')
-            ax.set_title('Динамика выручки')
-            
-            # Отображение графика
-            self.display_chart(fig)
-            
-            # Обновление статистики
-            self.stats_text.delete(1.0, tk.END)
-            self.stats_text.insert(1.0, 
-                "Статистика по выручке:\n"
-                "Средняя выручка: 200 руб.\n"
-                "Максимальная: 300 руб.\n"
-                "Минимальная: 100 руб.")
-            
-        except Exception as e:
-            self.logger.error(f"Ошибка создания графика: {e}")
-            raise
-    
-    def display_chart(self, figure):
-        """Отображение графика в интерфейсе"""
-        if self.chart_canvas:
-            self.chart_canvas.get_tk_widget().destroy()
-        
-        self.current_figure = figure
-        self.chart_canvas = FigureCanvasTkAgg(figure, master=self.chart_frame)
-        self.chart_canvas.draw()
-        self.chart_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
     def create_visualization_tab(self, parent):
-        """
-        Создание вкладки визуализации
-        
-        Args:
-            parent: Родительский виджет
-        """
-        # Основной фрейм
+        """Создание вкладки визуализации"""
         main_frame = ttk.Frame(parent)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
@@ -1085,79 +982,428 @@ class DataVisualization:
         control_frame = ttk.LabelFrame(main_frame, text="Управление визуализацией", padding="10")
         control_frame.pack(fill=tk.X, pady=(0, 10))
         
-        # Выбор типа визуализации
-        ttk.Label(control_frame, text="Тип графика:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
-        self.viz_type = tk.StringVar(value="revenue_trend")
+        # Выбор типа графика
+        ttk.Label(control_frame, text="Тип графика:").pack(anchor=tk.W, padx=5, pady=5)
         
+        self.viz_type = tk.StringVar(value="revenue")
+        
+        # Простые типы графиков
         viz_types = [
-            ("Динамика выручки", "revenue_trend"),
-            ("Распределение по жанрам", "genre_distribution"),
-            ("Топ клиентов", "top_customers"),
-            ("Статусы заказов", "order_status"),
-            ("Сезонность", "seasonality"),
-            ("Анализ скидок", "discount_analysis")
+            ("Выручка по месяцам", "revenue"),
+            ("Жанры книг", "genre"),
+            ("Топ клиентов", "customers"),
+            ("Статусы заказов", "status")
         ]
         
-        for i, (text, value) in enumerate(viz_types):
+        for text, value in viz_types:
             ttk.Radiobutton(control_frame, text=text, variable=self.viz_type, 
-                           value=value).grid(row=0, column=i+1, sticky=tk.W, padx=5, pady=5)
+                           value=value).pack(anchor=tk.W, padx=20, pady=2)
         
-        # Параметры периода
-        period_frame = ttk.Frame(control_frame)
-        period_frame.grid(row=1, column=0, columnspan=len(viz_types)+1, sticky=tk.W, pady=5)
-        
-        self.chart_frame = ttk.LabelFrame(main_frame, text="Визуализация", padding="10")
-        self.chart_frame.pack(fill=tk.BOTH, expand=True)
-        
-        self.chart_canvas = None
-        self.current_figure = None
-
-        ttk.Label(period_frame, text="Период:").pack(side=tk.LEFT, padx=5)
-        
-        self.period_var = tk.StringVar(value="month")
-        periods = [("Месяц", "month"), ("Квартал", "quarter"), ("Год", "year"), ("Все время", "all")]
-        
-        for text, value in periods:
-            ttk.Radiobutton(period_frame, text=text, variable=self.period_var, 
-                           value=value).pack(side=tk.LEFT, padx=5)
-        
-        # Кнопки управления
+        # Кнопки
         button_frame = ttk.Frame(control_frame)
-        button_frame.grid(row=2, column=0, columnspan=len(viz_types)+1, pady=10)
+        button_frame.pack(pady=10)
         
-        ttk.Button(button_frame, text="Сгенерировать график", 
-                  command=self.generate_visualization).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Экспорт в Excel",
-                  command=self.export_to_excel).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Сохранить как изображение", 
-                  command=self.save_visualization).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Создать график", 
+                  command=self.create_chart).pack(side=tk.LEFT, padx=5)
         
-        if self.metabase_config.get("enabled"):
-            ttk.Button(button_frame, text="Открыть в Metabase", 
-                      command=self.open_metabase).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Сохранить как PNG", 
+                  command=self.save_chart).pack(side=tk.LEFT, padx=5)
+        
+        # Кнопка Metabase
+        ttk.Button(button_frame, text="Открыть Metabase", 
+                  command=self.open_metabase).pack(side=tk.LEFT, padx=5)
         
         # Область для графика
-        chart_frame = ttk.LabelFrame(main_frame, text="Визуализация", padding="10")
-        chart_frame.pack(fill=tk.BOTH, expand=True)
+        self.chart_frame = ttk.LabelFrame(main_frame, text="График", padding="10")
+        self.chart_frame.pack(fill=tk.BOTH, expand=True)
         
-        self.chart_canvas = None
-        self.current_figure = None
-        
-        # Область для статистики
+        # Статистика
         stats_frame = ttk.LabelFrame(main_frame, text="Статистика", padding="10")
         stats_frame.pack(fill=tk.X, pady=(10, 0))
         
-        self.stats_text = tk.Text(stats_frame, height=6, wrap=tk.WORD)
-        stats_scrollbar = ttk.Scrollbar(stats_frame, orient=tk.VERTICAL, command=self.stats_text.yview)
-        self.stats_text.configure(yscrollcommand=stats_scrollbar.set)
-        
-        self.stats_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        stats_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # Кнопка настройки Metabase
-        if self.metabase_config.get("enabled"):
-            ttk.Button(button_frame, text="Открыть в Metabase", 
-                      command=self.open_metabase).pack(side=tk.LEFT, padx=5)
+        self.stats_text = tk.Text(stats_frame, height=4, wrap=tk.WORD)
+        self.stats_text.pack(fill=tk.BOTH, expand=True)
+        self.stats_text.insert(1.0, "Нажмите 'Создать график' для отображения статистики")
+        self.stats_text.config(state=tk.DISABLED)
+    
+    def create_chart(self):
+        """Создать график в зависимости от выбранного типа"""
+        try:
+            viz_type = self.viz_type.get()
+            
+            if viz_type == "revenue":
+                self.create_revenue_chart()
+            elif viz_type == "genre":
+                self.create_genre_chart()
+            elif viz_type == "customers":
+                self.create_customers_chart()
+            elif viz_type == "status":
+                self.create_status_chart()
+            else:
+                messagebox.showwarning("Ошибка", "Выберите тип графика")
+                
+        except Exception as e:
+            self.logger.error(f"Ошибка создания графика: {e}")
+            messagebox.showerror("Ошибка", f"Не удалось создать график:\n{str(e)}")
+    
+    def create_revenue_chart(self):
+        """График выручки по месяцам"""
+        try:
+            if not self.main_app.orders:
+                messagebox.showwarning("Нет данных", "Сначала загрузите заказы")
+                return
+            
+            # Подготовка данных
+            from collections import defaultdict
+            monthly_revenue = defaultdict(float)
+            
+            for order in self.main_app.orders:
+                if 'date' in order and 'total_amount' in order:
+                    try:
+                        date_str = order['date']
+                        month = date_str[:7]  # YYYY-MM
+                        monthly_revenue[month] += float(order['total_amount'])
+                    except:
+                        continue
+            
+            if not monthly_revenue:
+                messagebox.showwarning("Нет данных", "Не удалось получить данные о выручке")
+                return
+            
+            # Сортировка по месяцам
+            months = sorted(monthly_revenue.keys())
+            revenues = [monthly_revenue[m] for m in months]
+            
+            # Создание графика
+            import matplotlib.pyplot as plt
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            bars = ax.bar(months, revenues, color='skyblue')
+            ax.set_xlabel('Месяц')
+            ax.set_ylabel('Выручка, руб.')
+            ax.set_title('Выручка по месяцам')
+            plt.xticks(rotation=45)
+            
+            # Добавление значений на столбцы
+            for bar in bars:
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width()/2., height,
+                        f'{height:,.0f}',
+                        ha='center', va='bottom')
+            
+            self.display_chart(fig)
+            
+            # Статистика
+            total = sum(revenues)
+            avg = total / len(revenues) if revenues else 0
+            max_rev = max(revenues) if revenues else 0
+            max_month = months[revenues.index(max_rev)] if revenues else ""
+            
+            stats = f"Статистика выручки:\n"
+            stats += f"• Всего выручка: {total:,.0f} руб.\n"
+            stats += f"• Среднемесячная: {avg:,.0f} руб.\n"
+            stats += f"• Максимум: {max_rev:,.0f} руб. ({max_month})\n"
+            stats += f"• Период: {len(months)} месяцев"
+            
+            self.update_stats(stats)
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка создания графика выручки: {e}")
+            raise
+    
+    def create_genre_chart(self):
+        """График распределения по жанрам"""
+        try:
+            if not self.main_app.orders:
+                messagebox.showwarning("Нет данных", "Сначала загрузите заказы")
+                return
+            
+            # Подготовка данных
+            from collections import Counter
+            genre_counts = Counter()
+            
+            for order in self.main_app.orders:
+                genre = order.get('genre', 'Не указан')
+                genre_counts[genre] += 1
+            
+            if not genre_counts:
+                messagebox.showwarning("Нет данных", "Не удалось получить данные по жанрам")
+                return
+            
+            # Берем топ-10 жанров
+            genres = []
+            counts = []
+            for genre, count in genre_counts.most_common(10):
+                genres.append(genre)
+                counts.append(count)
+            
+            # Создание графика
+            import matplotlib.pyplot as plt
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            
+            colors = plt.cm.Set3(range(len(genres)))
+            bars = ax.barh(genres, counts, color=colors)
+            ax.set_xlabel('Количество заказов')
+            ax.set_ylabel('Жанр')
+            ax.set_title('Распределение заказов по жанрам')
+            
+            # Добавление значений
+            for bar in bars:
+                width = bar.get_width()
+                ax.text(width, bar.get_y() + bar.get_height()/2.,
+                        f'{int(width)}',
+                        ha='left', va='center')
+            
+            self.display_chart(fig)
+            
+            # Статистика
+            total = sum(counts)
+            top_genre = genres[0] if genres else ""
+            top_count = counts[0] if counts else 0
+            
+            stats = f"Статистика по жанрам:\n"
+            stats += f"• Всего жанров: {len(genre_counts)}\n"
+            stats += f"• Всего заказов: {total}\n"
+            stats += f"• Самый популярный: {top_genre} ({top_count})\n"
+            stats += f"• Показано топ: {len(genres)} жанров"
+            
+            self.update_stats(stats)
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка создания графика жанров: {e}")
+            raise
+    
+    def create_customers_chart(self):
+        """График топ клиентов"""
+        try:
+            if not self.main_app.customers or not self.main_app.orders:
+                messagebox.showwarning("Нет данных", "Сначала загрузите клиентов и заказы")
+                return
+            
+            # Подготовка данных (клиенты с заказами)
+            from collections import defaultdict
+            customer_spending = defaultdict(float)
+            
+            for order in self.main_app.orders:
+                customer_id = order.get('customer_id')
+                customer_name = order.get('customer_name')
+                if customer_id and customer_name:
+                    amount = float(order.get('total_amount', 0))
+                    customer_spending[customer_name] += amount
+            
+            if not customer_spending:
+                messagebox.showwarning("Нет данных", "Нет данных о покупках клиентов")
+                return
+            
+            # Берем топ-10 клиентов
+            sorted_customers = sorted(customer_spending.items(), key=lambda x: x[1], reverse=True)[:10]
+            
+            customers = []
+            amounts = []
+            for name, amount in sorted_customers:
+                # Сокращаем длинные имена
+                if len(name) > 20:
+                    name = name[:17] + "..."
+                customers.append(name)
+                amounts.append(amount)
+            
+            # Создание графика
+            import matplotlib.pyplot as plt
+            
+            fig, ax = plt.subplots(figsize=(12, 6))
+            
+            colors = plt.cm.viridis(range(len(customers)))
+            bars = ax.bar(customers, amounts, color=colors)
+            ax.set_xlabel('Клиент')
+            ax.set_ylabel('Сумма покупок, руб.')
+            ax.set_title('Топ-10 клиентов по выручке')
+            plt.xticks(rotation=45, ha='right')
+            
+            # Добавление значений
+            for bar in bars:
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width()/2., height,
+                        f'{height:,.0f}',
+                        ha='center', va='bottom', rotation=90)
+            
+            self.display_chart(fig)
+            
+            # Статистика
+            total = sum(amounts)
+            avg = total / len(amounts) if amounts else 0
+            top_customer = customers[0] if customers else ""
+            top_amount = amounts[0] if amounts else 0
+            
+            stats = f"Статистика по клиентам:\n"
+            stats += f"• Всего клиентов с заказами: {len(customer_spending)}\n"
+            stats += f"• Сумма топ-10: {total:,.0f} руб.\n"
+            stats += f"• Средняя сумма: {avg:,.0f} руб.\n"
+            stats += f"• Лучший клиент: {top_customer} ({top_amount:,.0f} руб.)"
+            
+            self.update_stats(stats)
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка создания графика клиентов: {e}")
+            raise
+    
+    def create_status_chart(self):
+        """График статусов заказов"""
+        try:
+            if not self.main_app.orders:
+                messagebox.showwarning("Нет данных", "Сначала загрузите заказы")
+                return
+            
+            # Подготовка данных
+            from collections import Counter
+            status_counts = Counter()
+            
+            for order in self.main_app.orders:
+                status = order.get('status', 'Не указан')
+                status_counts[status] += 1
+            
+            if not status_counts:
+                messagebox.showwarning("Нет данных", "Не удалось получить данные по статусам")
+                return
+            
+            # Сортировка
+            statuses = []
+            counts = []
+            for status, count in status_counts.most_common():
+                statuses.append(status)
+                counts.append(count)
+            
+            # Создание графика
+            import matplotlib.pyplot as plt
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            
+            # Цвета для статусов
+            color_map = {
+                'Завершен': 'green',
+                'Оплачен': 'blue',
+                'В обработке': 'orange',
+                'Отправлен': 'purple',
+                'Ожидает оплаты': 'red',
+                'Отменен': 'gray'
+            }
+            
+            colors = [color_map.get(status, 'gray') for status in statuses]
+            
+            bars = ax.bar(statuses, counts, color=colors)
+            ax.set_xlabel('Статус')
+            ax.set_ylabel('Количество заказов')
+            ax.set_title('Распределение заказов по статусам')
+            plt.xticks(rotation=45)
+            
+            # Добавление значений и процентов
+            total = sum(counts)
+            for bar in bars:
+                height = bar.get_height()
+                percentage = (height / total * 100) if total > 0 else 0
+                ax.text(bar.get_x() + bar.get_width()/2., height,
+                        f'{int(height)} ({percentage:.1f}%)',
+                        ha='center', va='bottom')
+            
+            self.display_chart(fig)
+            
+            # Статистика
+            stats = f"Статистика по статусам:\n"
+            stats += f"• Всего заказов: {total}\n"
+            
+            for status, count in zip(statuses, counts):
+                percentage = (count / total * 100) if total > 0 else 0
+                stats += f"• {status}: {count} ({percentage:.1f}%)\n"
+            
+            self.update_stats(stats)
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка создания графика статусов: {e}")
+            raise
+    
+    def display_chart(self, figure):
+        """Отображение графика"""
+        try:
+            # Очищаем предыдущий график если есть
+            if self.chart_canvas:
+                try:
+                    self.chart_canvas.get_tk_widget().destroy()
+                except:
+                    pass
+            
+            # Создаем новый канвас
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+            
+            self.current_figure = figure
+            self.chart_canvas = FigureCanvasTkAgg(figure, master=self.chart_frame)
+            self.chart_canvas.draw()
+            self.chart_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка отображения графика: {e}")
+            # Если не удалось создать график, показываем сообщение
+            messagebox.showerror("Ошибка отображения", 
+                f"Не удалось отобразить график:\n{str(e)}\n\n"
+                "Возможно проблема с библиотекой matplotlib.\n"
+                "Попробуйте установить: pip install matplotlib")
+            raise
+    
+    def update_stats(self, text):
+        """Обновление статистики"""
+        if self.stats_text:
+            self.stats_text.config(state=tk.NORMAL)
+            self.stats_text.delete(1.0, tk.END)
+            self.stats_text.insert(1.0, text)
+            self.stats_text.config(state=tk.DISABLED)
+    
+    def save_chart(self):
+        """Сохранить график как PNG"""
+        try:
+            if not self.current_figure:
+                messagebox.showwarning("Нет графика", "Сначала создайте график")
+                return
+            
+            from tkinter import filedialog
+            import os
+            
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".png",
+                filetypes=[
+                    ("PNG files", "*.png"),
+                    ("JPEG files", "*.jpg"),
+                    ("Все файлы", "*.*")
+                ],
+                title="Сохранить график"
+            )
+            
+            if file_path:
+                self.current_figure.savefig(file_path, dpi=300, bbox_inches='tight')
+                messagebox.showinfo("Успех", f"График сохранен в:\n{file_path}")
+                
+        except Exception as e:
+            self.logger.error(f"Ошибка сохранения графика: {e}")
+            messagebox.showerror("Ошибка", f"Не удалось сохранить график:\n{str(e)}")
+    
+    def open_metabase(self):
+        """Открыть Metabase"""
+        try:
+            import webbrowser
+            url = "http://localhost:3000"
+            webbrowser.open(url)
+            
+            messagebox.showinfo("Metabase", 
+                f"Открываю {url}\n\n"
+                "Если Metabase не открывается:\n"
+                "1. Запустите: docker-compose up metabase\n"
+                "2. Подождите 30 секунд\n"
+                "3. Попробуйте снова")
+                
+        except Exception as e:
+            messagebox.showerror("Ошибка", 
+                f"Не удалось открыть Metabase:\n{str(e)}\n\n"
+                "Проверьте:\n"
+                "1. Установлен ли браузер?\n"
+                "2. Доступен ли localhost:3000?")
             
 
 class CustomerDialog:
@@ -2533,10 +2779,10 @@ class CustomerManagementSystem:
             metabase_btn_frame = ttk.Frame(metabase_frame)
             metabase_btn_frame.pack(fill=tk.X, pady=(10, 0))
             
-            ttk.Button(metabase_btn_frame, text="🔄 Синхронизировать с Metabase", 
+            ttk.Button(metabase_btn_frame, text="Синхронизировать с Metabase", 
                       command=self.sync_with_metabase).pack(side=tk.LEFT, padx=2)
             
-            ttk.Button(metabase_btn_frame, text="📊 Создать дашборд", 
+            ttk.Button(metabase_btn_frame, text="Создать дашборд", 
                       command=self.create_dashboard_in_metabase).pack(side=tk.LEFT, padx=2)
         
         # Обновляем информацию о данных
