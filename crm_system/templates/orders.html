@@ -24,6 +24,9 @@
                     <button class="btn btn-light btn-sm me-2" onclick="exportOrders()">
                         <i class="fas fa-file-export me-1"></i>Экспорт
                     </button>
+                    <button class="btn btn-danger btn-sm me-2" onclick="deleteAllOrders()">
+                        <i class="fas fa-trash-alt me-1"></i>Удалить все
+                    </button>
                     <button class="btn btn-light btn-sm" onclick="showAddOrderModal()">
                         <i class="fas fa-plus me-1"></i>Добавить заказ
                     </button>
@@ -349,6 +352,26 @@
                 }
             } catch(e) {
                 console.error(e);
+            }
+        }
+    }
+
+    async function deleteAllOrders() {
+        if (confirm('Вы уверены, что хотите удалить ВСЕ заказы? Это действие нельзя отменить!')) {
+            try {
+                const response = await fetch('/api/orders/all', {method: 'DELETE'});
+                const result = await response.json();
+                if (response.ok) {
+                    alert(result.message);
+                    if (selectedCustomerId) {
+                        await loadOrders(selectedCustomerId);
+                    }
+                } else {
+                    alert(result.error || 'Ошибка при удалении');
+                }
+            } catch(e) {
+                console.error(e);
+                alert('Ошибка при удалении');
             }
         }
     }

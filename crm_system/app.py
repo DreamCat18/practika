@@ -247,6 +247,29 @@ def delete_order(order_id):
     db.session.commit()
     return jsonify({'message': 'Заказ удален'})
 
+@app.route('/api/customers/all', methods=['DELETE'])
+def delete_all_customers():
+    try:
+        # Сначала удаляем все заказы, связанные с клиентами
+        Order.query.delete()
+        # Затем удаляем всех клиентов
+        Customer.query.delete()
+        db.session.commit()
+        return jsonify({'message': 'Все клиенты и связанные заказы успешно удалены'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Ошибка при удалении: {str(e)}'}), 500
+
+@app.route('/api/orders/all', methods=['DELETE'])
+def delete_all_orders():
+    try:
+        Order.query.delete()
+        db.session.commit()
+        return jsonify({'message': 'Все заказы успешно удалены'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Ошибка при удалении: {str(e)}'}), 500
+
 @app.route('/reports')
 def reports_page():
     return render_template('reports.html')
