@@ -47,55 +47,97 @@ class OrderManager:
 
 order_manager = OrderManager()
 
+def load_data_from_file(file_path):
+    """Загрузка данных из файлов различных форматов (CSV, Excel)"""
+    if not os.path.exists(file_path):
+        return None
+
+    filename = file_path.lower()
+
+    # Определение типа файла и выбор соответствующего метода чтения
+    if filename.endswith('.csv'):
+        df = pd.read_csv(file_path, encoding='utf-8')
+    elif filename.endswith('.xls'):
+        df = pd.read_excel(file_path, engine='xlrd')
+    elif filename.endswith('.xlsx'):
+        df = pd.read_excel(file_path, engine='openpyxl')
+    else:
+        # По умолчанию пробуем прочитать как CSV
+        try:
+            df = pd.read_csv(file_path, encoding='utf-8')
+        except:
+            # Если не получилось, пробуем Excel
+            df = pd.read_excel(file_path, engine='openpyxl')
+
+    return df
+
 def load_data_from_csv():
-    """Загрузка данных из CSV файлов"""
+    """Загрузка данных из файлов клиентов и заказов"""
     customers_file = "clients_100.csv"
     orders_file = "book_orders.csv"
 
+    # Проверяем различные расширения для клиентов
+    for ext in ['.csv', '.xlsx', '.xls']:
+        possible_file = os.path.splitext(customers_file)[0] + ext
+        if os.path.exists(possible_file):
+            customers_file = possible_file
+            break
+
+    # Проверяем различные расширения для заказов
+    for ext in ['.csv', '.xlsx', '.xls']:
+        possible_file = os.path.splitext(orders_file)[0] + ext
+        if os.path.exists(possible_file):
+            orders_file = possible_file
+            break
+
+    # Загрузка данных клиентов
     if os.path.exists(customers_file):
-        df = pd.read_csv(customers_file, encoding='utf-8')
-        for _, row in df.iterrows():
-            if not Customer.query.filter_by(full_name=row.get('ФИО', '')).first():
-                customer = Customer(
-                    full_name=row.get('ФИО', ''),
-                    email=row.get('Email', ''),
-                    phone=row.get('Телефон', ''),
-                    registration_date=datetime.strptime(str(row.get('Дата регистрации', date.today())), "%Y-%m-%d").date(),
-                    notes=row.get('Примечания', '')
-                )
-                db.session.add(customer)
-        db.session.commit()
+        df = load_data_from_file(customers_file)
+        if df is not None:
+            for _, row in df.iterrows():
+                if not Customer.query.filter_by(full_name=row.get('ФИО', '')).first():
+                    customer = Customer(
+                        full_name=row.get('ФИО', ''),
+                        email=row.get('Email', ''),
+                        phone=row.get('Телефон', ''),
+                        registration_date=datetime.strptime(str(row.get('Дата регистрации', date.today())), "%Y-%m-%d").date(),
+                        notes=row.get('Примечания', '')
+                    )
+                    db.session.add(customer)
+            db.session.commit()
 
+    # Загрузка данных заказов
     if os.path.exists(orders_file):
-        df = pd.read_csv(orders_file, encoding='utf-8')
-        for _, row in df.iterrows():
-            customer = Customer.query.filter_by(full_name=row.get('ФИО_клиента', '')).first()
-            if customer:
-                try:
-                    order_date = datetime.strptime(str(row.get('Дата_заказа', date.today())), "%Y-%m-%d").date()
-                except:
-                    order_date = date.today()
+        df = load_data_from_file(orders_file)
+        if df is not None:
+            for _, row in df.iterrows():
+                customer = Customer.query.filter_by(full_name=row.get('ФИО_клиента', '')).first()
+                if customer:
+                    try:
+                        order_date = datetime.strptime(str(row.get('Дата_заказа', date.today())), "%Y-%m-%d").date()
+                    except:
+                        order_date = date.today()
 
-                order = Order(
-                    id=str(row.get('ID_заказа', '')),
-                    customer_id=customer.id,
-                    customer_name=row.get('ФИО_клиента', ''),
-                    order_date=order_date,
-                    book_title=row.get('Название_книги', ''),
-                    author=row.get('Автор', ''),
-                    genre=row.get('Жанр', ''),
-                    quantity=int(row.get('Количество', 1)),
-                    price=float(row.get('Цена_за_шт', 0)),
-                    discount=float(row.get('Скидка_%', 0)),
-                    final_price=float(row.get('Итоговая_цена', 0)),
-                    total_amount=float(row.get('Общая_сумма', 0)),
-                    status=row.get('Статус_заказа', 'Ожидает оплаты'),
-                    delivery_method=row.get('Способ_доставки', ''),
-                    order_notes=row.get('Примечание_к_заказу', '')
-                )
-                if not Order.query.filter_by(id=order.id).first():
-                    db.session.add(order)
-        db.session.commit()
+                    order = Order(
+                        id=str(row.get('ID_заказа', '')),
+                        customer_id=customer.id,
+                        customer_name=row.get('ФИО_клиента', ''),
+                        order_date=order_date,
+                        book_title=row.get('Название_книги', ''),
+                        author=row.get('Автор', ''),
+                        genre=row.get('Жанр', ''),
+                        quantity=int(row.get('Количество', 1)),
+                        price=float(row.get('Цена_за_шт', 0)),
+                        discount=float(row.get('Скидка_%', 0)),
+                        final_price=float(row.get('Итоговая_цена', 0)),
+                        total_amount=float(row.get('Общая_сумма', 0)),
+                        status=row.get('Статус_заказа', 'Ожидает оплаты'),
+                        delivery_method=row.get('Способ_доставки', ''),
+                        order_notes=row.get('Примечание_к_заказу', '')
+                    )
+                    if not Order.query.filter_by(id=order.id).first():
+                        db.session.add(order)
+            db.session.commit()
 
 @app.route('/')
 def index():
@@ -434,6 +476,9 @@ def get_chart(chart_type):
 
 @app.route('/api/export/<data_type>')
 def export_data(data_type):
+    # Определяем формат экспорта из параметра запроса
+    export_format = request.args.get('format', 'excel').lower()
+
     if data_type == 'customers':
         customers = Customer.query.all()
         data = []
@@ -450,10 +495,17 @@ def export_data(data_type):
             })
         df = pd.DataFrame(data)
         output = io.BytesIO()
-        df.to_excel(output, index=False)
-        output.seek(0)
-        return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        as_attachment=True, download_name='customers.xlsx')
+
+        if export_format == 'csv':
+            df.to_csv(output, index=False, encoding='utf-8-sig')
+            output.seek(0)
+            return send_file(output, mimetype='text/csv',
+                            as_attachment=True, download_name='customers.csv')
+        else:  # Excel по умолчанию
+            df.to_excel(output, index=False)
+            output.seek(0)
+            return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            as_attachment=True, download_name='customers.xlsx')
 
     elif data_type == 'orders':
         orders = Order.query.all()
@@ -478,10 +530,17 @@ def export_data(data_type):
             })
         df = pd.DataFrame(data)
         output = io.BytesIO()
-        df.to_excel(output, index=False)
-        output.seek(0)
-        return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        as_attachment=True, download_name='orders.xlsx')
+
+        if export_format == 'csv':
+            df.to_csv(output, index=False, encoding='utf-8-sig')
+            output.seek(0)
+            return send_file(output, mimetype='text/csv',
+                            as_attachment=True, download_name='orders.csv')
+        else:  # Excel по умолчанию
+            df.to_excel(output, index=False)
+            output.seek(0)
+            return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            as_attachment=True, download_name='orders.xlsx')
 
     return jsonify({'error': 'Unknown data type'}), 400
 
@@ -494,20 +553,24 @@ def import_customers():
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
 
-    # Определяем формат файла и выбираем соответствующий движок
+    # Определяем формат файла и выбираем соответствующий метод чтения
     filename = file.filename.lower()
-    if filename.endswith('.xls'):
-        engine = "xlrd"
-    elif filename.endswith('.xlsx'):
-        engine = "openpyxl"
-    else:
-        # По умолчанию пробуем openpyxl
-        engine = "openpyxl"
 
     try:
-        df = pd.read_excel(file, engine=engine)
+        if filename.endswith('.csv'):
+            df = pd.read_csv(file, encoding='utf-8')
+        elif filename.endswith('.xls'):
+            df = pd.read_excel(file, engine='xlrd')
+        elif filename.endswith('.xlsx'):
+            df = pd.read_excel(file, engine='openpyxl')
+        else:
+            # По умолчанию пробуем сначала CSV, потом Excel
+            try:
+                df = pd.read_csv(file, encoding='utf-8')
+            except:
+                df = pd.read_excel(file, engine='openpyxl')
     except Exception as e:
-        return jsonify({'error': f'Ошибка при чтении файла: {str(e)}. Убедитесь, что файл имеет корректный формат Excel (.xls или .xlsx)'}), 400
+        return jsonify({'error': f'Ошибка при чтении файла: {str(e)}. Поддерживаемые форматы: .csv, .xls, .xlsx'}), 400
 
     imported = 0
     for _, row in df.iterrows():
@@ -535,18 +598,22 @@ def import_orders():
         return jsonify({'error': 'No file selected'}), 400
 
     try:
-        # Определяем формат файла и выбираем соответствующий движок
+        # Определяем формат файла и выбираем соответствующий метод чтения
         filename = file.filename.lower()
-        if filename.endswith('.xls'):
-            engine = "xlrd"
-        elif filename.endswith('.xlsx'):
-            engine = "openpyxl"
-        else:
-            # По умолчанию пробуем openpyxl
-            engine = "openpyxl"
 
-        # Чтение Excel файла
-        df = pd.read_excel(file, engine=engine)
+        # Чтение файла в зависимости от формата
+        if filename.endswith('.csv'):
+            df = pd.read_csv(file, encoding='utf-8')
+        elif filename.endswith('.xls'):
+            df = pd.read_excel(file, engine='xlrd')
+        elif filename.endswith('.xlsx'):
+            df = pd.read_excel(file, engine='openpyxl')
+        else:
+            # По умолчанию пробуем сначала CSV, потом Excel
+            try:
+                df = pd.read_csv(file, encoding='utf-8')
+            except:
+                df = pd.read_excel(file, engine='openpyxl')
 
         # Маппинг возможных названий колонок
         column_mapping = {
