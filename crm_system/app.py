@@ -490,115 +490,155 @@ def import_customers():
 
 @app.route('/api/import/orders', methods=['POST'])
 def import_orders():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+
     try:
-        print(f"Request files: {request.files}")
-        print(f"Request form: {request.form}")
+        # Чтение Excel файла
+        df = pd.read_excel(file)
 
-        if 'file' not in request.files:
-            print("Error: No file uploaded")
-            return jsonify({'error': 'No file uploaded'}), 400
+        # Маппинг возможных названий колонок
+        column_mapping = {
+            'ФИО_клиента': 'ФИО_клиента',
+            'Клиент': 'ФИО_клиента',
+            'client_name': 'ФИО_клиента',
+            'customer_name': 'ФИО_клиента',
+            'Дата_заказа': 'Дата_заказа',
+            'order_date': 'Дата_заказа',
+            'Название_книги': 'Название_книги',
+            'book_title': 'Название_книги',
+            'product_name': 'Название_книги',
+            'Автор': 'Автор',
+            'author': 'Автор',
+            'Жанр': 'Жанр',
+            'genre': 'Жанр',
+            'Количество': 'Количество',
+            'quantity': 'Количество',
+            'Цена_за_шт': 'Цена_за_шт',
+            'price': 'Цена_за_шт',
+            'Скидка_%': 'Скидка_%',
+            'discount': 'Скидка_%',
+            'Статус_заказа': 'Статус_заказа',
+            'Статус': 'Статус_заказа',
+            'status': 'Статус_заказа',
+            'Способ_доставки': 'Способ_доставки',
+            'delivery_method': 'Способ_доставки',
+            'Примечание_к_заказу': 'Примечание_к_заказу',
+            'Примечание': 'Примечание_к_заказу',
+            'order_notes': 'Примечание_к_заказу',
+            'notes': 'Примечание_к_заказу'
+        }
 
-        file = request.files['file']
-        print(f"File received: {file.filename}")
+        # Переименовываем колонки
+        existing_mapping = {k: v for k, v in column_mapping.items() if k in df.columns}
+        if existing_mapping:
+            df = df.rename(columns=existing_mapping)
 
-        if file.filename == '':
-            print("Error: No file selected")
-            return jsonify({'error': 'No file selected'}), 400
-
-        try:
-            print("Attempting to read Excel file...")
-            df = pd.read_excel(file)
-            print(f"Excel file read successfully. Shape: {df.shape}")
-            print(f"Columns: {df.columns.tolist()}")
-        except Exception as e:
-            print(f"Error reading Excel file: {str(e)}")
-            return jsonify({'error': f'Ошибка чтения файла: {str(e)}'}), 400
+        # Проверяем наличие обязательных колонок
+        required_cols = ['ФИО_клиента', 'Название_книги']
+        for col in required_cols:
+            if col not in df.columns:
+                return jsonify({'error': f'В файле отсутствует колонка: {col}'}), 400
 
         imported = 0
         errors = []
 
-        for _, row in df.iterrows():
+        for idx, row in df.iterrows():
+            customer_name = str(row.get('ФИО_клиента', '')).strip()
+            if not customer_name or customer_name == 'nan':
+                errors.append(f"Строка {idx+2}: пустое имя клиента")
+                continue
+
+            # Поиск или создание клиента
+            customer = Customer.query.filter_by(full_name=customer_name).first()
+            if not customer:
+                # Создаем нового клиента
+                customer = Customer(
+                    full_name=customer_name,
+                    email='',
+                    phone='',
+                    registration_date=date.today(),
+                    notes='Создан автоматически при импорте заказов'
+                )
+                db.session.add(customer)
+                db.session.commit()
+                print(f"Создан новый клиент: {customer_name}")
+
+            # Получение данных заказа
             try:
-                customer_name = row.get('ФИО_клиента', row.get('client_name', ''))
-                if not customer_name:
-                    errors.append('Пропущена строка: отсутствует ФИО клиента')
-                    continue
-
-                customer = Customer.query.filter_by(full_name=customer_name).first()
-                if not customer:
-                    errors.append(f'Клиент не найден: {customer_name}')
-                    continue
-
-                # Безопасное получение даты заказа
-                order_date_val = row.get('Дата_заказа', row.get('order_date', date.today()))
-                try:
-                    if isinstance(order_date_val, str):
-                        order_date = datetime.strptime(order_date_val, "%Y-%m-%d").date()
-                    elif isinstance(order_date_val, (datetime, date)):
-                        order_date = order_date_val
-                    else:
-                        order_date = date.today()
-                except:
+                order_date_str = str(row.get('Дата_заказа', date.today()))
+                if 'Дата_заказа' not in df.columns:
                     order_date = date.today()
+                else:
+                    try:
+                        order_date = datetime.strptime(order_date_str, "%Y-%m-%d").date()
+                    except:
+                        try:
+                            order_date = datetime.strptime(order_date_str, "%d.%m.%Y").date()
+                        except:
+                            order_date = date.today()
 
-                # Безопасное получение числовых значений
-                try:
-                    quantity = int(row.get('Количество', row.get('quantity', 1)))
-                except:
-                    quantity = 1
+                quantity = int(float(row.get('Количество', 1))) if pd.notna(row.get('Количество', 1)) else 1
+                price = float(row.get('Цена_за_шт', 0)) if pd.notna(row.get('Цена_за_шт', 0)) else 0
+                discount = float(row.get('Скидка_%', 0)) if pd.notna(row.get('Скидка_%', 0)) else 0
 
-                try:
-                    price = float(row.get('Цена_за_шт', row.get('price', 0)))
-                except:
-                    price = 0
+                final_price = price * (1 - discount / 100)
+                total_amount = final_price * quantity
 
-                try:
-                    discount = float(row.get('Скидка_%', row.get('discount', 0)))
-                except:
-                    discount = 0
+                # Генерация ID заказа
+                last_order = Order.query.order_by(Order.id.desc()).first()
+                if last_order and last_order.id:
+                    try:
+                        last_num = int(''.join(filter(str.isdigit, last_order.id)) or 0)
+                        new_num = last_num + 1
+                    except:
+                        new_num = Order.query.count() + 1
+                else:
+                    new_num = Order.query.count() + 1
 
-                order_id = row.get('ID_заказа', row.get('order_id', f'ORD{Order.query.count() + imported + 1:03d}'))
+                order_id = f"IMP{new_num:04d}"
 
                 order = Order(
-                    id=str(order_id),
+                    id=order_id,
                     customer_id=customer.id,
                     customer_name=customer_name,
                     order_date=order_date,
-                    book_title=row.get('Название_книги', row.get('book_title', '')),
-                    author=row.get('Автор', row.get('author', '')),
-                    genre=row.get('Жанр', row.get('genre', '')),
+                    book_title=str(row.get('Название_книги', '')),
+                    author=str(row.get('Автор', '')) if pd.notna(row.get('Автор', '')) else '',
+                    genre=str(row.get('Жанр', '')) if pd.notna(row.get('Жанр', '')) else '',
                     quantity=quantity,
                     price=price,
                     discount=discount,
-                    final_price=0,
-                    total_amount=0,
-                    status=row.get('Статус_заказа', row.get('status', 'Ожидает оплаты')),
-                    delivery_method=row.get('Способ_доставки', row.get('delivery_method', '')),
-                    order_notes=row.get('Примечание_к_заказу', row.get('notes', ''))
+                    final_price=final_price,
+                    total_amount=total_amount,
+                    status=str(row.get('Статус_заказа', 'Ожидает оплаты')) if pd.notna(row.get('Статус_заказа', 'Ожидает оплаты')) else 'Ожидает оплаты',
+                    delivery_method=str(row.get('Способ_доставки', '')) if pd.notna(row.get('Способ_доставки', '')) else '',
+                    order_notes=str(row.get('Примечание_к_заказу', '')) if pd.notna(row.get('Примечание_к_заказу', '')) else ''
                 )
-                order.final_price = order.price * (1 - order.discount / 100)
-                order.total_amount = order.final_price * order.quantity
 
-                if not Order.query.filter_by(id=order.id).first():
+                if order.book_title:
                     db.session.add(order)
                     imported += 1
+                else:
+                    errors.append(f"Строка {idx+2}: пустое название книги")
+
             except Exception as e:
-                errors.append(f'Ошибка в строке {imported + 1}: {str(e)}')
-                continue
+                errors.append(f"Строка {idx+2}: ошибка - {str(e)}")
 
         db.session.commit()
 
+        message = f'Импортировано {imported} заказов'
         if errors:
-            return jsonify({
-                'imported': imported, 
-                'message': f'Импортировано {imported} заказов с ошибками',
-                'errors': errors[:10]  # Возвращаем только первые 10 ошибок
-            })
+            message += f'\nОшибок: {len(errors)}\nПервые 5 ошибок:\n' + '\n'.join(errors[:5])
 
-        return jsonify({'imported': imported, 'message': f'Импортировано {imported} заказов'})
+        return jsonify({'imported': imported, 'message': message, 'errors': errors[:10]})
+
     except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': f'Ошибка при импорте: {str(e)}'}), 500
+        return jsonify({'error': f'Ошибка импорта: {str(e)}'}), 400
 
 if __name__ == '__main__':
     with app.app_context():
