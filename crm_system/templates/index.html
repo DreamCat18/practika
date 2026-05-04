@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-dashboard me-2"></i>Панель управления</h4>
+            </div>
+            <div class="card-body">
+                <div class="row" id="stats-cards">
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-users me-2"></i>Клиентов</h5>
+                                <h2 class="card-text" id="total-customers">-</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-shopping-cart me-2"></i>Заказов</h5>
+                                <h2 class="card-text" id="total-orders">-</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-ruble-sign me-2"></i>Выручка</h5>
+                                <h2 class="card-text" id="total-revenue">-</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-chart-line me-2"></i>Средний чек</h5>
+                                <h2 class="card-text" id="avg-order">-</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-chart-line me-2"></i>Выручка по месяцам</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="revenueChart" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-chart-pie me-2"></i>Статусы заказов</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="statusChart" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/reports/order_statistics');
+            const data = await response.json();
+            document.getElementById('total-orders').textContent = data.total_orders;
+            document.getElementById('total-revenue').textContent = data.total_revenue.toLocaleString() + ' ₽';
+            document.getElementById('avg-order').textContent = Math.round(data.avg_order).toLocaleString() + ' ₽';
+        } catch(e) {
+            console.error(e);
+        }
+
+        try {
+            const response = await fetch('/api/reports/customer_summary');
+            const data = await response.json();
+            document.getElementById('total-customers').textContent = data.total_customers;
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    async function loadCharts() {
+        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+
+        try {
+            const revenueRes = await fetch('/api/chart/revenue');
+            const revenueBlob = await revenueRes.blob();
+            const revenueUrl = URL.createObjectURL(revenueBlob);
+            new Image().src = revenueUrl;
+        } catch(e) {}
+
+        try {
+            const statusRes = await fetch('/api/reports/order_statistics');
+            const statusData = await statusRes.json();
+
+            new Chart(statusCtx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(statusData.by_status),
+                    datasets: [{
+                        data: Object.values(statusData.by_status),
+                        backgroundColor: ['#28a745', '#007bff', '#ffc107', '#dc3545', '#17a2b8', '#6c757d']
+                    }]
+                }
+            });
+        } catch(e) {}
+    }
+
+    loadStats();
+    loadCharts();
+</script>
+{% endblock %}

@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Визуализация данных</h5>
+        <div>
+            <button class="btn btn-light btn-sm me-2" onclick="saveChart()">
+                <i class="fas fa-camera me-1"></i>Сохранить график
+            </button>
+            <button class="btn btn-light btn-sm" onclick="refreshChart()">
+                <i class="fas fa-sync me-1"></i>Обновить
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <label class="form-label">Тип графика</label>
+                <select class="form-select" id="chartType" onchange="changeChart()">
+                    <option value="revenue">Выручка по месяцам</option>
+                    <option value="genre">Жанры книг</option>
+                    <option value="customers">Топ клиентов по выручке</option>
+                    <option value="status">Статусы заказов</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <img id="chartImage" src="" alt="График" class="img-fluid" style="max-height: 500px;">
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header bg-secondary text-white">
+                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Статистика</h6>
+            </div>
+            <div class="card-body" id="statsContent">
+                <p class="text-muted">Выберите тип графика для отображения статистики</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadChart() {
+        const chartType = document.getElementById('chartType').value;
+        const img = document.getElementById('chartImage');
+        img.src = `/api/chart/${chartType}?t=${Date.now()}`;
+        await loadStats(chartType);
+    }
+
+    async function loadStats(chartType) {
+        const statsDiv = document.getElementById('statsContent');
+        statsDiv.innerHTML = '<div class="text-center"><div class="spinner-border"></div></div>';
+
+        try {
+            if (chartType === 'revenue') {
+                const response = await fetch('/api/reports/order_statistics');
+                const data = await response.json();
+                statsDiv.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4>${data.total_orders}</h4>
+                                <p class="text-muted">Всего заказов</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4>${data.total_revenue.toLocaleString()} ₽</h4>
+                                <p class="text-muted">Общая выручка</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4>${Math.round(data.avg_order).toLocaleString()} ₽</h4>
+                                <p class="text-muted">Средний чек</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (chartType === 'genre') {
+                const response = await fetch('/api/reports/order_statistics');
+                const data = await response.json();
+                statsDiv.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="text-center">
+                                <h4>${data.total_orders}</h4>
+                                <p class="text-muted">Всего заказов</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="mt-3 text-muted">График показывает распределение заказов по жанрам книг</p>
+                `;
+            } else if (chartType === 'customers') {
+                const response = await fetch('/api/reports/customer_summary');
+                const data = await response.json();
+                statsDiv.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4>${data.total_customers}</h4>
+                                <p class="text-muted">Всего клиентов</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4>${data.customers_with_orders}</h4>
+                                <p class="text-muted">Клиентов с заказами</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4>${data.total_revenue.toLocaleString()} ₽</h4>
+                                <p class="text-muted">Общая выручка</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="mt-3 text-muted">Топ-10 клиентов по сумме покупок</p>
+                `;
+            } else if (chartType === 'status') {
+                const response = await fetch('/api/reports/order_statistics');
+                const data = await response.json();
+                statsDiv.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="text-center">
+                                <h4>${data.total_orders}</h4>
+                                <p class="text-muted">Всего заказов</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <h6>Распределение по статусам:</h6>
+                        <ul>
+                            ${Object.entries(data.by_status).map(([status, count]) => `
+                                <li>${status}: ${count} (${Math.round(count / data.total_orders * 100)}%)</li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+        } catch(e) {
+            console.error(e);
+            statsDiv.innerHTML = '<div class="alert alert-warning">Не удалось загрузить статистику</div>';
+        }
+    }
+
+    function changeChart() {
+        loadChart();
+    }
+
+    function refreshChart() {
+        loadChart();
+    }
+
+    async function saveChart() {
+        const chartType = document.getElementById('chartType').value;
+        const img = document.getElementById('chartImage');
+
+        const link = document.createElement('a');
+        link.download = `chart_${chartType}.png`;
+        link.href = img.src;
+        link.click();
+    }
+
+    loadChart();
+</script>
+{% endblock %}

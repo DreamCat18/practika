@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-users me-2"></i>Клиенты</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="customersList" style="max-height: 500px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Заказы</h5>
+                <div>
+                    <button class="btn btn-light btn-sm me-2" onclick="exportOrders()">
+                        <i class="fas fa-file-export me-1"></i>Экспорт
+                    </button>
+                    <button class="btn btn-light btn-sm" onclick="showAddOrderModal()">
+                        <i class="fas fa-plus me-1"></i>Добавить заказ
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped" id="ordersTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Дата</th>
+                                <th>Книга</th>
+                                <th>Автор</th>
+                                <th>Кол-во</th>
+                                <th>Сумма</th>
+                                <th>Статус</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal для заказа -->
+<div class="modal fade" id="orderModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="orderModalTitle">Добавить заказ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="orderForm">
+                    <input type="hidden" id="orderId">
+                    <input type="hidden" id="orderCustomerId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Дата заказа *</label>
+                            <input type="date" class="form-control" id="orderDate" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Название книги *</label>
+                            <input type="text" class="form-control" id="bookTitle" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Автор</label>
+                            <input type="text" class="form-control" id="author">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Жанр</label>
+                            <input type="text" class="form-control" id="genre">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Количество *</label>
+                            <input type="number" class="form-control" id="quantity" value="1" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Цена за шт *</label>
+                            <input type="number" step="0.01" class="form-control" id="price" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Скидка %</label>
+                            <input type="number" step="0.1" class="form-control" id="discount" value="0">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Итоговая сумма</label>
+                            <input type="text" class="form-control" id="totalDisplay" readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Статус</label>
+                            <select class="form-select" id="status">
+                                <option>Ожидает оплаты</option>
+                                <option>Обработан</option>
+                                <option>В доставке</option>
+                                <option>Доставлен</option>
+                                <option>Выполнен</option>
+                                <option>Отменен</option>
+                                <option>Возврат</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Способ доставки</label>
+                            <select class="form-select" id="deliveryMethod">
+                                <option>Самовывоз</option>
+                                <option>Курьерская доставка</option>
+                                <option>Почта России</option>
+                                <option>СДЭК</option>
+                                <option>Boxberry</option>
+                                <option>DPD</option>
+                            </select>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label class="form-label">Примечание</label>
+                            <textarea class="form-control" id="orderNotes" rows="2"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveOrder()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let customers = [];
+    let selectedCustomerId = null;
+    let ordersData = [];
+
+    async function loadCustomers() {
+        try {
+            const response = await fetch('/api/customers');
+            customers = await response.json();
+            const list = document.getElementById('customersList');
+            list.innerHTML = '';
+
+            customers.forEach(c => {
+                const btn = document.createElement('button');
+                btn.className = 'list-group-item list-group-item-action';
+                btn.textContent = `${c.id} - ${c.full_name}`;
+                btn.onclick = () => selectCustomer(c.id);
+                list.appendChild(btn);
+            });
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    async function selectCustomer(customerId) {
+        selectedCustomerId = customerId;
+        document.querySelectorAll('#customersList .list-group-item').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.textContent.startsWith(customerId)) {
+                btn.classList.add('active');
+            }
+        });
+        await loadOrders(customerId);
+    }
+
+    async function loadOrders(customerId) {
+        try {
+            const response = await fetch(`/api/orders?customer_id=${customerId}`);
+            ordersData = await response.json();
+            const tbody = document.getElementById('ordersTableBody');
+            tbody.innerHTML = '';
+
+            ordersData.forEach(order => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = order.id;
+                row.insertCell(1).textContent = order.order_date;
+                row.insertCell(2).textContent = order.book_title;
+                row.insertCell(3).textContent = order.author;
+                row.insertCell(4).textContent = order.quantity;
+                row.insertCell(5).textContent = order.total_amount.toLocaleString() + ' ₽';
+                row.insertCell(6).innerHTML = getStatusBadge(order.status);
+
+                const actions = row.insertCell(7);
+                actions.innerHTML = `
+                    <button class="btn btn-sm btn-warning me-1" onclick="editOrder('${order.id}')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteOrder('${order.id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+            });
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    function getStatusBadge(status) {
+        const colors = {
+            'Выполнен': 'success',
+            'Доставлен': 'info',
+            'Обработан': 'primary',
+            'В доставке': 'warning',
+            'Ожидает оплаты': 'secondary',
+            'Отменен': 'danger',
+            'Возврат': 'dark'
+        };
+        const color = colors[status] || 'secondary';
+        return `<span class="badge bg-${color}">${status}</span>`;
+    }
+
+    function calculateTotal() {
+        const quantity = parseFloat(document.getElementById('quantity').value) || 0;
+        const price = parseFloat(document.getElementById('price').value) || 0;
+        const discount = parseFloat(document.getElementById('discount').value) || 0;
+        const total = quantity * price * (1 - discount / 100);
+        document.getElementById('totalDisplay').value = total.toFixed(2) + ' ₽';
+    }
+
+    document.getElementById('quantity').addEventListener('input', calculateTotal);
+    document.getElementById('price').addEventListener('input', calculateTotal);
+    document.getElementById('discount').addEventListener('input', calculateTotal);
+
+    function showAddOrderModal() {
+        if (!selectedCustomerId) {
+            alert('Сначала выберите клиента');
+            return;
+        }
+        const customer = customers.find(c => c.id === selectedCustomerId);
+        document.getElementById('orderModalTitle').textContent = `Добавить заказ для ${customer.full_name}`;
+        document.getElementById('orderId').value = '';
+        document.getElementById('orderCustomerId').value = selectedCustomerId;
+        document.getElementById('orderForm').reset();
+        document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('quantity').value = 1;
+        document.getElementById('discount').value = 0;
+        calculateTotal();
+        new bootstrap.Modal(document.getElementById('orderModal')).show();
+    }
+
+    function editOrder(orderId) {
+        const order = ordersData.find(o => o.id === orderId);
+        if (order) {
+            const customer = customers.find(c => c.id === order.customer_id);
+            document.getElementById('orderModalTitle').textContent = `Редактировать заказ для ${customer.full_name}`;
+            document.getElementById('orderId').value = order.id;
+            document.getElementById('orderCustomerId').value = order.customer_id;
+            document.getElementById('orderDate').value = order.order_date;
+            document.getElementById('bookTitle').value = order.book_title;
+            document.getElementById('author').value = order.author;
+            document.getElementById('genre').value = order.genre;
+            document.getElementById('quantity').value = order.quantity;
+            document.getElementById('price').value = order.price;
+            document.getElementById('discount').value = order.discount;
+            document.getElementById('status').value = order.status;
+            document.getElementById('deliveryMethod').value = order.delivery_method;
+            document.getElementById('orderNotes').value = order.order_notes;
+            calculateTotal();
+            new bootstrap.Modal(document.getElementById('orderModal')).show();
+        }
+    }
+
+    async function saveOrder() {
+        const orderId = document.getElementById('orderId').value;
+        const customerId = parseInt(document.getElementById('orderCustomerId').value);
+        const customer = customers.find(c => c.id === customerId);
+
+        const data = {
+            customer_id: customerId,
+            customer_name: customer.full_name,
+            order_date: document.getElementById('orderDate').value,
+            book_title: document.getElementById('bookTitle').value,
+            author: document.getElementById('author').value,
+            genre: document.getElementById('genre').value,
+            quantity: parseInt(document.getElementById('quantity').value),
+            price: parseFloat(document.getElementById('price').value),
+            discount: parseFloat(document.getElementById('discount').value),
+            status: document.getElementById('status').value,
+            delivery_method: document.getElementById('deliveryMethod').value,
+            order_notes: document.getElementById('orderNotes').value
+        };
+
+        try {
+            let response;
+            if (orderId) {
+                response = await fetch(`/api/orders/${orderId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+            } else {
+                response = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+            }
+
+            if (response.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('orderModal')).hide();
+                await loadOrders(customerId);
+            }
+        } catch(e) {
+            console.error(e);
+            alert('Ошибка сохранения');
+        }
+    }
+
+    async function deleteOrder(orderId) {
+        if (confirm('Удалить заказ?')) {
+            try {
+                const response = await fetch(`/api/orders/${orderId}`, {method: 'DELETE'});
+                if (response.ok && selectedCustomerId) {
+                    await loadOrders(selectedCustomerId);
+                }
+            } catch(e) {
+                console.error(e);
+            }
+        }
+    }
+
+    async function exportOrders() {
+        window.location.href = '/api/export/orders';
+    }
+
+    loadCustomers();
+</script>
+{% endblock %}

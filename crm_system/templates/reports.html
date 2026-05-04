@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Тип отчета</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group" id="reportTypes">
+                    <button class="list-group-item list-group-item-action active" data-type="customer_summary">
+                        <i class="fas fa-users me-2"></i>Сводка по клиентам
+                    </button>
+                    <button class="list-group-item list-group-item-action" data-type="order_statistics">
+                        <i class="fas fa-chart-line me-2"></i>Статистика заказов
+                    </button>
+                    <button class="list-group-item list-group-item-action" data-type="registration_analysis">
+                        <i class="fas fa-calendar me-2"></i>Анализ регистраций
+                    </button>
+                    <button class="list-group-item list-group-item-action" data-type="customer_activity">
+                        <i class="fas fa-trophy me-2"></i>Активность клиентов
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Результат отчета</h5>
+            </div>
+            <div class="card-body" id="reportContent">
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-chart-bar fa-3x mb-3"></i>
+                    <p>Выберите тип отчета слева</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadReport(type) {
+        const contentDiv = document.getElementById('reportContent');
+        contentDiv.innerHTML = '<div class="text-center"><div class="spinner-border"></div><p>Загрузка...</p></div>';
+
+        try {
+            const response = await fetch(`/api/reports/${type}`);
+            const data = await response.json();
+
+            let html = '';
+
+            if (type === 'customer_summary') {
+                html = `
+                    <h5>Сводка по клиентам</h5>
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h3>${data.total_customers}</h3>
+                                    <p>Всего клиентов</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h3>${data.customers_with_orders}</h3>
+                                    <p>Клиентов с заказами</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <h3>${data.total_revenue.toLocaleString()} ₽</h3>
+                                    <p>Общая выручка</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h6>Детали по клиентам:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr><th>ID</th><th>ФИО</th><th>Заказов</th><th>Потрачено</th></tr>
+                            </thead>
+                            <tbody>
+                                ${data.customers.map(c => `
+                                    <tr>
+                                        <td>${c.id}</td>
+                                        <td>${c.name}</td>
+                                        <td>${c.orders}</td>
+                                        <td>${c.spent.toLocaleString()} ₽</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else if (type === 'order_statistics') {
+                html = `
+                    <h5>Статистика заказов</h5>
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h3>${data.total_orders}</h3>
+                                    <p>Всего заказов</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h3>${data.total_revenue.toLocaleString()} ₽</h3>
+                                    <p>Общая выручка</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <h3>${Math.round(data.avg_order).toLocaleString()} ₽</h3>
+                                    <p>Средний чек</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h6>Заказы по статусам:</h6>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead><tr><th>Статус</th><th>Количество</th></tr></thead>
+                            <tbody>
+                                ${Object.entries(data.by_status).map(([status, count]) => `
+                                    <tr><td>${status}</td><td>${count}</td></tr>
+                                `).join('') || '<tr><td colspan="2">Нет данных</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else if (type === 'registration_analysis') {
+                html = `
+                    <h5>Анализ регистраций клиентов</h5>
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h3>${data.total}</h3>
+                                    <p>Всего регистраций</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h6>Регистрации по месяцам:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead><tr><th>Месяц</th><th>Количество клиентов</th></tr></thead>
+                            <tbody>
+                                ${Object.entries(data.monthly).sort().map(([month, count]) => `
+                                    <tr><td>${month}</td><td>${count}</td></tr>
+                                `).join('') || '<tr><td colspan="2">Нет данных</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else if (type === 'customer_activity') {
+                html = `
+                    <h5>Активность клиентов</h5>
+                    <h6>Топ-10 клиентов по количеству заказов:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr><th>ID</th><th>ФИО</th><th>Количество заказов</th><th>Потрачено</th></tr>
+                            </thead>
+                            <tbody>
+                                ${data.top_customers.map(c => `
+                                    <tr>
+                                        <td>${c.id}</td>
+                                        <td>${c.name}</td>
+                                        <td>${c.orders}</td>
+                                        <td>${c.spent.toLocaleString()} ₽</td>
+                                    </tr>
+                                `).join('') || '<tr><td colspan="4">Нет данных</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+
+            contentDiv.innerHTML = html;
+        } catch(e) {
+            console.error(e);
+            contentDiv.innerHTML = '<div class="alert alert-danger">Ошибка загрузки отчета</div>';
+        }
+    }
+
+    document.querySelectorAll('#reportTypes .list-group-item').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('#reportTypes .list-group-item').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            loadReport(this.dataset.type);
+        });
+    });
+
+    loadReport('customer_summary');
+</script>
+{% endblock %}
