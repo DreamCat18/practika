@@ -102,7 +102,7 @@ def convert_orders_file(input_file='book_orders.xlsx', output_file='заказы
     df_final['ФИО_клиента'] = df_final['ФИО_клиента'].fillna('').astype(str)
     df_final['Название_книги'] = df_final['Название_книги'].fillna('').astype(str)
     df_final['Количество'] = pd.to_numeric(df_final['Количество'], errors='coerce').fillna(1).astype(int)
-    df_final['Цена_за_шт'] = pd.to_numeric(df_final['Цена_за_шт', errors='coerce').fillna(0)
+    df_final['Цена_за_шт'] = pd.to_numeric(df_final['Цена_за_шт'], errors='coerce').fillna(0)
     df_final['Скидка_%'] = pd.to_numeric(df_final['Скидка_%'], errors='coerce').fillna(0)
 
     # Заполнение пустых значений
