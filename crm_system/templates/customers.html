@@ -248,13 +248,20 @@
                 method: 'POST',
                 body: formData
             });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({error: response.statusText}));
+                alert(`Ошибка импорта: ${errorData.error || response.statusText}`);
+                return;
+            }
+            
             const result = await response.json();
             alert(result.message);
             bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
             loadCustomers();
         } catch(e) {
             console.error(e);
-            alert('Ошибка импорта');
+            alert(`Ошибка импорта: ${e.message}`);
         }
     }
 
