@@ -471,7 +471,21 @@ def import_customers():
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
 
-    df = pd.read_excel(file)
+    # Определяем формат файла и выбираем соответствующий движок
+    filename = file.filename.lower()
+    if filename.endswith('.xls'):
+        engine = "xlrd"
+    elif filename.endswith('.xlsx'):
+        engine = "openpyxl"
+    else:
+        # По умолчанию пробуем openpyxl
+        engine = "openpyxl"
+
+    try:
+        df = pd.read_excel(file, engine=engine)
+    except Exception as e:
+        return jsonify({'error': f'Ошибка при чтении файла: {str(e)}. Убедитесь, что файл имеет корректный формат Excel (.xls или .xlsx)'}), 400
+
     imported = 0
     for _, row in df.iterrows():
         name = row.get('ФИО', row.get('full_name', ''))
@@ -498,8 +512,18 @@ def import_orders():
         return jsonify({'error': 'No file selected'}), 400
 
     try:
+        # Определяем формат файла и выбираем соответствующий движок
+        filename = file.filename.lower()
+        if filename.endswith('.xls'):
+            engine = "xlrd"
+        elif filename.endswith('.xlsx'):
+            engine = "openpyxl"
+        else:
+            # По умолчанию пробуем openpyxl
+            engine = "openpyxl"
+
         # Чтение Excel файла
-        df = pd.read_excel(file)
+        df = pd.read_excel(file, engine=engine)
 
         # Маппинг возможных названий колонок
         column_mapping = {
