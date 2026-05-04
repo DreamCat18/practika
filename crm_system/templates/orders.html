@@ -357,6 +357,34 @@
         window.location.href = '/api/export/orders';
     }
 
+    async function importOrders() {
+        const fileInput = document.getElementById('importOrdersFile');
+        const file = fileInput.files[0];
+        if (!file) {
+            alert('Выберите файл');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/api/import/orders', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            alert(result.message);
+            bootstrap.Modal.getInstance(document.getElementById('importOrdersModal')).hide();
+            if (selectedCustomerId) {
+                await loadOrders(selectedCustomerId);
+            }
+        } catch(e) {
+            console.error(e);
+            alert('Ошибка импорта');
+        }
+    }
+
     loadCustomers();
 </script>
 {% endblock %}
