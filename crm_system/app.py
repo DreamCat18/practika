@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import io
 import base64
 from sqlalchemy import func
+from collections import Counter
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///crm.db'
@@ -410,7 +411,6 @@ def get_chart(chart_type):
         plt.tight_layout()
 
     elif chart_type == 'genre':
-        from collections import Counter
         genres = Counter()
         for o in orders:
             genres[o.genre or 'Не указан'] += 1
