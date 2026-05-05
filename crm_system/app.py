@@ -392,7 +392,7 @@ def get_chart(chart_type):
         for o in orders:
             if o.order_date:
                 month = o.order_date.strftime("%Y-%m")
-                monthly[month] += o.total_amount
+                monthly[month] += float(o.total_amount)
 
         months = sorted(monthly.keys())
         revenues = [monthly[m] for m in months]
