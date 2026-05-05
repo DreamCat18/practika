@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime, date
 from flask import Flask, render_template, request, jsonify, send_file
 from database import db, Customer, Order
+from employee_assistant_api import employee_assistant_bp
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -16,6 +17,7 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///crm.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
+app.register_blueprint(employee_assistant_bp)
 
 class OrderManager:
     @staticmethod
@@ -381,6 +383,10 @@ def generate_report(report_type):
 @app.route('/visualization')
 def visualization_page():
     return render_template('visualization.html')
+
+@app.route('/employee_assistant')
+def employee_assistant():
+    return render_template('employee_assistant.html')
 
 @app.route('/api/chart/<chart_type>')
 def get_chart(chart_type):

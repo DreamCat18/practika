@@ -1,0 +1,762 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-user-tie me-2"></i>
+                    Ассистент сотрудника книжного магазина
+                </h4>
+                <small>Помощник для управления заказами, клиентами и аналитикой</small>
+            </div>
+            <div class="card-body">
+                <!-- Быстрая статистика -->
+                <div class="row mb-4" id="quickStats">
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h3 id="todayOrders">-</h3>
+                                <p>Заказов сегодня</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h3 id="pendingOrders">-</h3>
+                                <p>Ожидают обработки</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h3 id="todayRevenue">- ₽</h3>
+                                <p>Выручка сегодня</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body text-center">
+                                <h3 id="deliveryOrders">-</h3>
+                                <p>В доставке</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вкладки ассистента -->
+                <ul class="nav nav-tabs" id="assistantTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#dashboard">
+                            <i class="fas fa-tachometer-alt me-1"></i> Дашборд
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#orders">
+                            <i class="fas fa-shopping-cart me-1"></i> Управление заказами
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#customers">
+                            <i class="fas fa-users me-1"></i> Работа с клиентами
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#analytics">
+                            <i class="fas fa-chart-line me-1"></i> Аналитика продаж
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#inventory">
+                            <i class="fas fa-boxes me-1"></i> Склад и поставки
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#ai">
+                            <i class="fas fa-brain me-1"></i> AI-советник
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="tab-content mt-3">
+                    <!-- Дашборд -->
+                    <div class="tab-pane fade show active" id="dashboard">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-chart-line me-2"></i>Выручка за последние 7 дней</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="weeklyRevenue" height="200"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-tasks me-2"></i>Срочные задачи</h5>
+                                    </div>
+                                    <div class="card-body" id="urgentTasks">
+                                        <div class="list-group"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-star me-2"></i>Топ-5 книг недели</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="topBooks"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-trophy me-2"></i>Активные клиенты</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="activeCustomers"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Управление заказами -->
+                    <div class="tab-pane fade" id="orders">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-filter me-2"></i>Фильтр заказов</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <select id="orderStatusFilter" class="form-select">
+                                                    <option value="all">Все статусы</option>
+                                                    <option value="Ожидает оплаты">Ожидает оплаты</option>
+                                                    <option value="Обработан">Обработан</option>
+                                                    <option value="В доставке">В доставке</option>
+                                                    <option value="Доставлен">Доставлен</option>
+                                                    <option value="Отменен">Отменен</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <input type="date" id="orderDateFrom" class="form-control" placeholder="Дата от">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <input type="date" id="orderDateTo" class="form-control" placeholder="Дата до">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <button class="btn btn-primary w-100" onclick="filterOrders()">
+                                                    <i class="fas fa-search me-1"></i>Применить
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-header bg-info text-white">
+                                        <h5 class="mb-0"><i class="fas fa-list me-2"></i>Список заказов</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped" id="ordersManageTable">
+                                                <thead>
+                                                    <tr>
+                                                        <th>ID</th>
+                                                        <th>Клиент</th>
+                                                        <th>Дата</th>
+                                                        <th>Книга</th>
+                                                        <th>Сумма</th>
+                                                        <th>Статус</th>
+                                                        <th>Доставка</th>
+                                                        <th>Действия</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="ordersManageBody"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Работа с клиентами -->
+                    <div class="tab-pane fade" id="customers">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-search me-2"></i>Поиск клиента</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <input type="text" id="customerSearch" class="form-control"
+                                                placeholder="Поиск по ФИО, email, телефону">
+                                        <div class="mt-3" id="customerSearchResults"></div>
+                                    </div>
+                                </div>
+                                <div class="card mt-3">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-chart-pie me-2"></i>Сегментация</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="segmentChart" height="200"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-user-circle me-2"></i>Карточка клиента</h5>
+                                    </div>
+                                    <div class="card-body" id="customerCard">
+                                        <div class="text-center text-muted py-5">
+                                            <i class="fas fa-user fa-3x mb-3"></i>
+                                            <p>Найдите клиента слева</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Аналитика продаж -->
+                    <div class="tab-pane fade" id="analytics">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-chart-bar me-2"></i>Продажи по жанрам</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="genreSalesChart" height="250"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-truck me-2"></i>Продажи по доставке</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="deliveryChart" height="250"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-calendar me-2"></i>Прогноз продаж</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="forecastTable"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Склад и поставки -->
+                    <div class="tab-pane fade" id="inventory">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-boxes me-2"></i>Остатки товаров</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Книга</th>
+                                                        <th>Автор</th>
+                                                        <th>Продано (месяц)</th>
+                                                        <th>Прогноз продаж</th>
+                                                        <th>Рекомендация</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="inventoryTable"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header bg-warning">
+                                        <h5><i class="fas fa-exclamation-triangle me-2"></i>Требуют закупки</h5>
+                                    </div>
+                                    <div class="card-body" id="reorderList"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI-советник -->
+                    <div class="tab-pane fade" id="ai">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5><i class="fas fa-robot me-2"></i>AI-советник сотрудника</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="aiChat" style="height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin-bottom: 15px;">
+                                            <div class="text-center text-muted">
+                                                <i class="fas fa-brain fa-2x mb-2"></i>
+                                                <p>Задайте вопрос о продажах, клиентах или ассортименте</p>
+                                                <small>Примеры:<br>
+                                                - Покажи топ-5 клиентов по сумме заказов<br>
+                                                - Какие книги лучше всего продаются в жанре фэнтези?<br>
+                                                - Сделай прогноз продаж на следующую неделю<br>
+                                                - Какие статусы заказов требуют внимания?</small>
+                                            </div>
+                                        </div>
+                                        <div class="input-group">
+                                            <input type="text" id="aiQuestion" class="form-control"
+                                                    placeholder="Напишите ваш вопрос...">
+                                            <button class="btn btn-primary" onclick="askAI()">
+                                                <i class="fas fa-paper-plane"></i> Спросить
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-lightbulb me-2"></i>Быстрые действия</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-outline-primary" onclick="quickAnalysis('top_customers')">
+                                                📊 Топ клиенты
+                                            </button>
+                                            <button class="btn btn-outline-primary" onclick="quickAnalysis('top_books')">
+                                                📚 Топ книг
+                                            </button>
+                                            <button class="btn btn-outline-primary" onclick="quickAnalysis('delivery_stats')">
+                                                🚚 Статистика доставки
+                                            </button>
+                                            <button class="btn btn-outline-primary" onclick="quickAnalysis('recommend_reorder')">
+                                                📦 Что заказать
+                                            </button>
+                                            <button class="btn btn-outline-primary" onclick="quickAnalysis('problem_orders')">
+                                                ⚠️ Проблемные заказы
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Загрузка дашборда
+async function loadDashboard() {
+    try {
+        const response = await fetch('/api/assistant/stats');
+        const data = await response.json();
+
+        document.getElementById('todayOrders').textContent = data.today_orders || 0;
+        document.getElementById('pendingOrders').textContent = data.pending_orders || 0;
+        document.getElementById('todayRevenue').textContent = (data.today_revenue || 0).toLocaleString() + ' ₽';
+        document.getElementById('deliveryOrders').textContent = data.delivery_orders || 0;
+
+        // Топ книги
+        const topBooksDiv = document.getElementById('topBooks');
+        if (data.top_books) {
+            let html = '<div class="list-group">';
+            data.top_books.forEach((book, i) => {
+                html += `
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        ${i+1}. ${book.title}
+                        <span class="badge bg-primary rounded-pill">${book.sold} шт</span>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            topBooksDiv.innerHTML = html;
+        }
+
+        // Активные клиенты
+        const activeDiv = document.getElementById('activeCustomers');
+        if (data.active_customers) {
+            let html = '<div class="list-group">';
+            data.active_customers.slice(0,5).forEach(c => {
+                html += `
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        ${c.name}
+                        <span class="badge bg-success rounded-pill">${c.orders} заказов</span>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            activeDiv.innerHTML = html;
+        }
+
+        // Срочные задачи
+        const tasksDiv = document.getElementById('urgentTasks').querySelector('.list-group');
+        if (tasksDiv) {
+            tasksDiv.innerHTML = '';
+            if (data.urgent_tasks) {
+                data.urgent_tasks.forEach(task => {
+                    tasksDiv.innerHTML += `
+                        <div class="list-group-item list-group-item-warning">
+                            <i class="fas fa-bell me-2"></i>
+                            ${task}
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        // График выручки
+        if (data.weekly_revenue) {
+            const ctx = document.getElementById('weeklyRevenue').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.weekly_revenue.map(d => d.day),
+                    datasets: [{
+                        label: 'Выручка, ₽',
+                        data: data.weekly_revenue.map(d => d.revenue),
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0,123,255,0.1)',
+                        fill: true
+                    }]
+                }
+            });
+        }
+
+        // Сегментация клиентов
+        if (data.segments) {
+            const ctx2 = document.getElementById('segmentChart').getContext('2d');
+            new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(data.segments),
+                    datasets: [{
+                        data: Object.values(data.segments),
+                        backgroundColor: ['#28a745', '#17a2b8', '#ffc107', '#dc3545', '#007bff']
+                    }]
+                }
+            });
+        }
+
+        // График продаж по жанрам
+        if (data.genre_sales) {
+            const ctx3 = document.getElementById('genreSalesChart').getContext('2d');
+            new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: data.genre_sales.map(g => g.genre),
+                    datasets: [{
+                        label: 'Продажи, шт',
+                        data: data.genre_sales.map(g => g.count),
+                        backgroundColor: '#28a745'
+                    }]
+                }
+            });
+        }
+
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+// Фильтрация заказов
+async function filterOrders() {
+    const status = document.getElementById('orderStatusFilter').value;
+    const dateFrom = document.getElementById('orderDateFrom').value;
+    const dateTo = document.getElementById('orderDateTo').value;
+
+    const response = await fetch(`/api/assistant/orders?status=${status}&from=${dateFrom}&to=${dateTo}`);
+    const orders = await response.json();
+
+    const tbody = document.getElementById('ordersManageBody');
+    tbody.innerHTML = '';
+
+    orders.forEach(order => {
+        const row = tbody.insertRow();
+        row.insertCell(0).innerHTML = `<a href="#" onclick="viewOrder('${order.id}')">${order.id}</a>`;
+        row.insertCell(1).textContent = order.customer_name;
+        row.insertCell(2).textContent = order.order_date;
+        row.insertCell(3).textContent = order.book_title;
+        row.insertCell(4).textContent = order.total_amount.toLocaleString() + ' ₽';
+        row.insertCell(5).innerHTML = getStatusBadge(order.status);
+        row.insertCell(6).textContent = order.delivery_method;
+
+        const actions = row.insertCell(7);
+        if (order.status === 'Ожидает оплаты') {
+            actions.innerHTML = `
+                <button class="btn btn-sm btn-success" onclick="updateStatus('${order.id}', 'Обработан')">
+                    Подтвердить
+                </button>
+            `;
+        } else if (order.status === 'Обработан') {
+            actions.innerHTML = `
+                <button class="btn btn-sm btn-info" onclick="updateStatus('${order.id}', 'В доставке')">
+                    Отправить
+                </button>
+            `;
+        } else if (order.status === 'В доставке') {
+            actions.innerHTML = `
+                <button class="btn btn-sm btn-primary" onclick="updateStatus('${order.id}', 'Доставлен')">
+                    Доставить
+                </button>
+            `;
+        }
+    });
+}
+
+function getStatusBadge(status) {
+    const colors = {
+        'Выполнен': 'success',
+        'Доставлен': 'info',
+        'Обработан': 'primary',
+        'В доставке': 'warning',
+        'Ожидает оплаты': 'secondary',
+        'Отменен': 'danger'
+    };
+    return `<span class="badge bg-${colors[status] || 'secondary'}">${status}</span>`;
+}
+
+async function updateStatus(orderId, newStatus) {
+    const response = await fetch(`/api/assistant/update_status`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({order_id: orderId, status: newStatus})
+    });
+    if (response.ok) {
+        filterOrders();
+        loadDashboard();
+    }
+}
+
+// Поиск клиента
+let searchTimeout;
+document.getElementById('customerSearch')?.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => searchCustomers(this.value), 500);
+});
+
+async function searchCustomers(query) {
+    if (query.length < 2) return;
+
+    const response = await fetch(`/api/assistant/search_customers?q=${encodeURIComponent(query)}`);
+    const customers = await response.json();
+
+    const resultsDiv = document.getElementById('customerSearchResults');
+    resultsDiv.innerHTML = `
+        <div class="list-group">
+            ${customers.map(c => `
+                <a href="#" class="list-group-item list-group-item-action" onclick="showCustomerCard(${c.id})">
+                    <strong>${c.full_name}</strong><br>
+                    <small>${c.email} | ${c.phone} | Заказов: ${c.total_orders}</small>
+                </a>
+            `).join('')}
+        </div>
+    `;
+}
+
+async function showCustomerCard(customerId) {
+    const response = await fetch(`/api/assistant/customer/${customerId}`);
+    const customer = await response.json();
+
+    const cardDiv = document.getElementById('customerCard');
+    cardDiv.innerHTML = `
+        <h4>${customer.full_name}</h4>
+        <hr>
+        <div class="row">
+            <div class="col-md-6">
+                <p><i class="fas fa-envelope me-2"></i>${customer.email || '—'}</p>
+                <p><i class="fas fa-phone me-2"></i>${customer.phone || '—'}</p>
+                <p><i class="fas fa-calendar me-2"></i>Регистрация: ${customer.registration_date}</p>
+            </div>
+            <div class="col-md-6">
+                <p><i class="fas fa-shopping-cart me-2"></i>Всего заказов: ${customer.total_orders}</p>
+                <p><i class="fas fa-ruble-sign me-2"></i>Потрачено: ${customer.total_spent.toLocaleString()} ₽</p>
+                <p><i class="fas fa-chart-line me-2"></i>Средний чек: ${Math.round(customer.avg_order)} ₽</p>
+            </div>
+        </div>
+        ${customer.notes ? `<div class="alert alert-info mt-2"><i class="fas fa-sticky-note me-2"></i>${customer.notes}</div>` : ''}
+
+        <h5 class="mt-3">Последние заказы</h5>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr><th>Дата</th><th>Книга</th><th>Сумма</th><th>Статус</th></tr>
+                </thead>
+                <tbody>
+                    ${customer.recent_orders.map(o => `
+                        <tr>
+                            <td>${o.order_date}</td>
+                            <td>${o.book_title}</td>
+                            <td>${o.total_amount} ₽</td>
+                            <td>${getStatusBadge(o.status)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-3">
+            <button class="btn btn-primary" onclick="callCustomer('${customer.phone}')">
+                <i class="fas fa-phone-alt me-1"></i>Позвонить
+            </button>
+            <button class="btn btn-info" onclick="emailCustomer('${customer.email}')">
+                <i class="fas fa-envelope me-1"></i>Написать
+            </button>
+            <button class="btn btn-warning" onclick="addOrderForCustomer(${customer.id})">
+                <i class="fas fa-plus me-1"></i>Создать заказ
+            </button>
+        </div>
+    `;
+}
+
+// AI-советник
+async function askAI() {
+    const question = document.getElementById('aiQuestion').value;
+    if (!question.trim()) return;
+
+    const chatDiv = document.getElementById('aiChat');
+    chatDiv.innerHTML += `
+        <div class="alert alert-primary">
+            <strong><i class="fas fa-user me-2"></i>Вы:</strong> ${question}
+        </div>
+    `;
+
+    chatDiv.innerHTML += `
+        <div class="alert alert-info">
+            <div class="spinner-border spinner-border-sm me-2"></div>
+            Думаю...
+        </div>
+    `;
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+
+    document.getElementById('aiQuestion').value = '';
+
+    const response = await fetch('/api/assistant/ai_advice', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({question: question})
+    });
+
+    const data = await response.json();
+
+    // Удаляем индикатор загрузки
+    chatDiv.lastChild.remove();
+
+    chatDiv.innerHTML += `
+        <div class="alert alert-success">
+            <strong><i class="fas fa-robot me-2"></i>Ассистент:</strong><br>
+            ${data.answer}
+        </div>
+    `;
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+
+async function quickAnalysis(type) {
+    let question = '';
+    switch(type) {
+        case 'top_customers':
+            question = 'Покажи топ-10 клиентов по сумме заказов с их контактами';
+            break;
+        case 'top_books':
+            question = 'Какие 5 книг лучше всего продавались в этом месяце?';
+            break;
+        case 'delivery_stats':
+            question = 'Как распределяются заказы по способам доставки?';
+            break;
+        case 'recommend_reorder':
+            question = 'Какие книги наиболее популярны и скоро закончатся на складе?';
+            break;
+        case 'problem_orders':
+            question = 'Найди проблемные заказы (отмененные, возвраты, долго в обработке)';
+            break;
+    }
+    document.getElementById('aiQuestion').value = question;
+    askAI();
+}
+
+// Загрузка склада
+async function loadInventory() {
+    const response = await fetch('/api/assistant/inventory');
+    const data = await response.json();
+
+    const tbody = document.getElementById('inventoryTable');
+    tbody.innerHTML = '';
+
+    data.books.forEach(book => {
+        const row = tbody.insertRow();
+        const needReorder = book.sold_last_month > 10 && !book.in_stock;
+
+        row.insertCell(0).innerHTML = `<strong>${book.title}</strong>`;
+        row.insertCell(1).textContent = book.author;
+        row.insertCell(2).textContent = book.sold_last_month;
+        row.insertCell(3).textContent = book.forecast;
+        row.insertCell(4).innerHTML = needReorder ? 
+            '<span class="badge bg-danger">Требуется закупка</span>' : 
+            '<span class="badge bg-success">В наличии</span>';
+    });
+
+    const reorderDiv = document.getElementById('reorderList');
+    if (data.reorder_list && data.reorder_list.length > 0) {
+        reorderDiv.innerHTML = `
+            <div class="list-group">
+                ${data.reorder_list.map(book => `
+                    <div class="list-group-item list-group-item-danger">
+                        <strong>${book.title}</strong><br>
+                        <small>Продано: ${book.sold} шт | Рекомендуем: ${book.recommend} шт</small>
+                        <button class="btn btn-sm btn-warning mt-1 w-100" onclick="createOrderSuggestion('${book.title}')">
+                            Создать заказ поставщику
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } else {
+        reorderDiv.innerHTML = '<div class="alert alert-success">Все товары в достатке</div>';
+    }
+}
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', () => {
+    loadDashboard();
+    filterOrders();
+    loadInventory();
+
+    // Обновление каждые 30 секунд
+    setInterval(() => {
+        loadDashboard();
+        filterOrders();
+    }, 30000);
+});
+</script>
+{% endblock %}
