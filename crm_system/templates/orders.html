@@ -8,7 +8,13 @@
                 <h5 class="mb-0"><i class="fas fa-users me-2"></i>Клиенты</h5>
             </div>
             <div class="card-body p-0">
-                <div class="list-group list-group-flush" id="customersList" style="max-height: 500px; overflow-y: auto;"></div>
+                <div class="p-2">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="searchCustomer" placeholder="Поиск клиента" onkeyup="searchCustomers()">
+                    </div>
+                </div>
+                <div class="list-group list-group-flush" id="customersList" style="max-height: 450px; overflow-y: auto;"></div>
             </div>
         </div>
     </div>
@@ -206,6 +212,27 @@
             }
         });
         await loadOrders(customerId);
+    }
+
+    function searchCustomers() {
+        const searchTerm = document.getElementById('searchCustomer').value.toLowerCase();
+        const list = document.getElementById('customersList');
+        list.innerHTML = '';
+
+        const filteredCustomers = customers.filter(c => 
+            c.full_name.toLowerCase().includes(searchTerm) ||
+            c.email.toLowerCase().includes(searchTerm) ||
+            c.phone.toLowerCase().includes(searchTerm) ||
+            c.id.toString().includes(searchTerm)
+        );
+
+        filteredCustomers.forEach(c => {
+            const btn = document.createElement('button');
+            btn.className = 'list-group-item list-group-item-action';
+            btn.textContent = `${c.id} - ${c.full_name}`;
+            btn.onclick = () => selectCustomer(c.id);
+            list.appendChild(btn);
+        });
     }
 
     async function loadOrders(customerId) {
