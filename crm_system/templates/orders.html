@@ -33,6 +33,14 @@
                 </div>
             </div>
             <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" id="searchOrder" placeholder="Поиск по ID, книге, автору или статусу" onkeyup="searchOrders()">
+                        </div>
+                    </div>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-striped" id="ordersTable">
                         <thead>
@@ -413,6 +421,40 @@
             console.error(e);
             alert(`Ошибка импорта: ${e.message}`);
         }
+    }
+
+    function searchOrders() {
+        const searchTerm = document.getElementById('searchOrder').value.toLowerCase();
+        const tbody = document.getElementById('ordersTableBody');
+        tbody.innerHTML = '';
+
+        const filteredOrders = ordersData.filter(order => 
+            order.id.toLowerCase().includes(searchTerm) ||
+            order.book_title.toLowerCase().includes(searchTerm) ||
+            order.author.toLowerCase().includes(searchTerm) ||
+            order.status.toLowerCase().includes(searchTerm)
+        );
+
+        filteredOrders.forEach(order => {
+            const row = tbody.insertRow();
+            row.insertCell(0).textContent = order.id;
+            row.insertCell(1).textContent = order.order_date;
+            row.insertCell(2).textContent = order.book_title;
+            row.insertCell(3).textContent = order.author;
+            row.insertCell(4).textContent = order.quantity;
+            row.insertCell(5).textContent = order.total_amount.toLocaleString() + ' ₽';
+            row.insertCell(6).innerHTML = getStatusBadge(order.status);
+
+            const actions = row.insertCell(7);
+            actions.innerHTML = `
+                <button class="btn btn-sm btn-warning me-1" onclick="editOrder('${order.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteOrder('${order.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+        });
     }
 
     loadCustomers();
