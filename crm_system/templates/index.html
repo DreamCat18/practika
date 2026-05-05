@@ -101,8 +101,19 @@
             const revenueRes = await fetch('/api/chart/revenue');
             const revenueBlob = await revenueRes.blob();
             const revenueUrl = URL.createObjectURL(revenueBlob);
-            new Image().src = revenueUrl;
-        } catch(e) {}
+
+            // Создаем элемент img и добавляем его в контейнер
+            const revenueImg = new Image();
+            revenueImg.src = revenueUrl;
+            revenueImg.className = 'img-fluid';
+
+            // Очищаем контейнер и добавляем изображение
+            const revenueContainer = document.getElementById('revenueChart').parentElement;
+            revenueContainer.innerHTML = '';
+            revenueContainer.appendChild(revenueImg);
+        } catch(e) {
+            console.error('Ошибка загрузки графика выручки:', e);
+        }
 
         try {
             const statusRes = await fetch('/api/reports/order_statistics');
